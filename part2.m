@@ -167,16 +167,22 @@ mode4 = MODES(:,4);
 mode5 = MODES(:,5);
 
 modeToPlot = mode5;
-plot_structure(modeToPlot(4),modeToPlot(5),modeToPlot(1),modeToPlot(2),modeToPlot(3));
+% plot_structure(modeToPlot(4),modeToPlot(5),modeToPlot(1),modeToPlot(2),modeToPlot(3));
 
 %APARTAT 3.
 % a.
 [MODES2, EIGENVAL2] = eigs(K,A,neig);
 U_eig = sqrt(diag(EIGENVAL2));
+Udiv = real(U_eig(3));
 
 % b.
 Cdelta = (3*c1*1*pi*s*(c1-s))/(2*(c1-s)*s+3*c1^2) + (3*c1^2*1*pi*s)/(4*(c1-s)*s+6*c1^2);
-S14 = h1*(c1-3*s/4-x1);
+Cdelta = 1.3149;
+delta_l1=0.784375;
+delta_lf=0.530875;
+xp_delta1 = (c1-3*s/4-x1);
+xp_delta = x1-((c1-s)/4*delta_l1+(c1-3*s/4)*delta_lf);
+S14 = h1*xp_delta;
 S24 = 0;
 S34 = 0;
 S44 = h1;
@@ -189,18 +195,94 @@ Sdelta = [S14;
     S54];
 
 fdelta = Cdelta*Sdelta;
-D = [C11 0 0]*Caux;
+D = [C11 C23+C22 C33+C32]*Caux;
+% D = [C11 0 0]*Caux;
 
-U_range = 0:0.5:100; 
+U_range = 0:0.01:Udiv; 
 liftInc = zeros(length(U_range),1);
 
 for i = 1:length(U_range)
-    liftInc(i) = 1 + (U_range(i)^2/Cdelta)*D*inv(K-U_range(i)^2*A)*fdelta;
+    liftInc(i) = 1 + (U_range(i)^2/Cdelta)*(D/(K-U_range(i)^2*A)*fdelta);
 end
 
-% figure 
-% plot(U_range, liftInc, 'r')
-% xlabel('U_{inf}')
-% ylabel('\Delta L/L_0')
-% grid on
+Ur = [12.15 12.15];
+AlUr = [-200 200];
+Ud = [Udiv Udiv];
 
+figure 
+hold on
+plot(Ud, AlUr,'--','color','b')
+plot(Ur, AlUr,'--','color','g')
+plot(U_range, liftInc, 'r')
+xlabel('U_{i}')
+ylabel('\Delta L/L_0')
+ylim([-100 100])
+legend('U_D','U_R','location','northwest')
+hold off
+grid on
+
+% Flutter
+
+B11 = (pi*c1^2/4)*rho;
+B22 = (pi*c1^2/4)*rho;
+B33 = (pi*c2^2/4)*rho;
+b1 = x1-c1*3/4;
+b2 = x1-c1*3/4;
+b3 = x2-c2*3/4;
+
+A0 = A;
+B0 = [b1 0 0 1 0;
+    0 b2 0 1 0;
+    0 0 b3 0 1];
+
+B1 = [B11 0 0 0 0;
+    0 B22 0 0 0;
+    0 0 B33 0 0];
+
+
+S1 = [h1*(x1-3*c1/4) S12 S13;
+    S21 h2*(x1-3*c1/4) S23;
+    S31 S32 h2*(x2-3*c2/4);
+    S41 S42 S43;
+    S51 S52 S53];
+
+
+A1 = S1*B1 - S*C*B0;
+A = zeros(10,10,length(U_range));
+B = zeros(10,10,length(U_range));
+eigsReal = zeros(5,length(U_range));
+maxRealEig = zeros(length(U_range),1);
+eigsImaginary = zeros(length(U_range),1);
+
+for i = 1:length(U_range)
+    A(1:5,1:5,i) = K-U_range(i)^2*A0;
+    A(6:10,1:5,i) = zeros(5);
+    A(1:5,6:10,i) = zeros(5);
+    A(6:10,6:10,i) = eye(5);
+    
+    B(1:5,1:5,i) = U_range(i)*A1;
+    B(6:10,1:5,i) = eye(5);
+    B(1:5,6:10,i) = -M;
+    B(6:10,6:10,i) = zeros(5);
+    
+    [MODES3, EIGENVAL3] = eigs(A(:,:,i),B(:,:,i),neig);
+    eigsReal(:,i) = real(diag(EIGENVAL3));
+    [maxRealEig(i),pos] = max(eigsReal(:,i)); 
+    diagEigen = diag(EIGENVAL3);
+    eigsImaginary(i) = imag(diagEigen(pos));
+
+end
+
+
+figure 
+hold on
+plot(U_range,maxRealEig.*c1./(2*U_range'))
+% plot(U_range,eigsReal)
+grid on
+hold off
+
+figure 
+hold on
+plot(U_range,eigsImaginary);
+grid on
+hold off
