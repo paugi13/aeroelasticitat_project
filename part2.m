@@ -214,7 +214,7 @@ hold on
 plot(Ud, AlUr,'--','color','b')
 plot(Ur, AlUr,'--','color','g')
 plot(U_range, liftInc, 'r')
-xlabel('U_{i}')
+xlabel('U_{\infty}')
 ylabel('\Delta L/L_0')
 ylim([-100 100])
 legend('U_D','U_R','location','northwest')
@@ -247,12 +247,16 @@ S1 = [h1*(x1-3*c1/4) S12 S13;
     S51 S52 S53];
 
 
+U_range = 0:0.01:100;  
 A1 = S1*B1 - S*C*B0;
 A = zeros(10,10,length(U_range));
 B = zeros(10,10,length(U_range));
-eigsReal = zeros(5,length(U_range));
+eigsReal = zeros(10,length(U_range));
 maxRealEig = zeros(length(U_range),1);
 eigsImaginary = zeros(length(U_range),1);
+
+YPlotReal = zeros(10, length(U_range));
+YPlotIm = zeros(10, length(U_range));
 
 for i = 1:length(U_range)
     A(1:5,1:5,i) = K-U_range(i)^2*A0;
@@ -265,24 +269,32 @@ for i = 1:length(U_range)
     B(1:5,6:10,i) = -M;
     B(6:10,6:10,i) = zeros(5);
     
-    [MODES3, EIGENVAL3] = eigs(A(:,:,i),B(:,:,i),neig);
+    [MODES3, EIGENVAL3] = eig(A(:,:,i),B(:,:,i));
     eigsReal(:,i) = real(diag(EIGENVAL3));
     [maxRealEig(i),pos] = max(eigsReal(:,i)); 
     diagEigen = diag(EIGENVAL3);
-    eigsImaginary(i) = imag(diagEigen(pos));
+%     eigsImaginary(i) = imag(diagEigen(pos));
 
+    YPlotReal(:,i) = (eigsReal(:,i)*c2)/(2*U_range(i));
+    YPlotIm(:,i) = imag(diag(EIGENVAL3))./(2*pi);
 end
 
+flutter = 6.23;
 
 figure 
 hold on
-plot(U_range,maxRealEig.*c1./(2*U_range'))
-% plot(U_range,eigsReal)
+xline(flutter,'--')
+plot(U_range,YPlotReal,'.')
 grid on
+legend('Flutter')
+xlabel('U_{\infty}')
+ylabel('p^Rc/2U_{\infty} ')
 hold off
 
 figure 
 hold on
-plot(U_range,eigsImaginary);
+plot(U_range,YPlotIm,'.');
+xlabel('U_{\infty}')
+ylabel('p^I/2\pi ')
 grid on
 hold off
